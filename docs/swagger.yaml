@@ -1,0 +1,590 @@
+basePath: /
+definitions:
+  http.APIResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  iam.CreateRoleRequest:
+    properties:
+      code:
+        type: string
+      name:
+        type: string
+      permissionIds:
+        items:
+          type: string
+        type: array
+    required:
+    - code
+    - name
+    type: object
+  iam.RefreshRequest:
+    properties:
+      refreshToken:
+        type: string
+    required:
+    - refreshToken
+    type: object
+  iam.SignInRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  iam.SignUpRequest:
+    properties:
+      email:
+        type: string
+      fullName:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - fullName
+    - password
+    type: object
+  iam.UpdateRoleRequest:
+    properties:
+      name:
+        type: string
+      permissionIds:
+        items:
+          type: string
+        type: array
+    required:
+    - name
+    type: object
+  iam.UpdateUserRequest:
+    properties:
+      fullName:
+        type: string
+    required:
+    - fullName
+    type: object
+  product.CreateProductRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      price:
+        type: integer
+    required:
+    - name
+    - price
+    type: object
+  product.UpdateProductRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      price:
+        type: integer
+    required:
+    - name
+    - price
+    type: object
+info:
+  contact: {}
+  description: Enterprise boilerplate API with IAM and Product modules.
+  title: Gin Boilerplate API
+  version: "1.0"
+paths:
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Refresh token payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/iam.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      summary: Refresh access token
+      tags:
+      - Auth
+  /auth/signin:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Sign in payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/iam.SignInRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      summary: Sign in user
+      tags:
+      - Auth
+  /auth/signup:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Sign up payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/iam.SignUpRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      summary: Sign up user
+      tags:
+      - Auth
+  /permissions:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List permissions
+      tags:
+      - Permissions
+  /permissions/{id}:
+    get:
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get permission by id
+      tags:
+      - Permissions
+  /products:
+    get:
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List products
+      tags:
+      - Products
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Create product payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/product.CreateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Create product
+      tags:
+      - Products
+  /products/{id}:
+    delete:
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete product
+      tags:
+      - Products
+    get:
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get product by id
+      tags:
+      - Products
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update product payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/product.UpdateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update product
+      tags:
+      - Products
+  /roles:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List roles
+      tags:
+      - Roles
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Create role payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/iam.CreateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Create role
+      tags:
+      - Roles
+  /roles/{id}:
+    delete:
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete role
+      tags:
+      - Roles
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update role payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/iam.UpdateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update role
+      tags:
+      - Roles
+  /users:
+    get:
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List users
+      tags:
+      - Users
+  /users/{id}:
+    get:
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user by id
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update user payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/iam.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update user
+      tags:
+      - Users
+  /users/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user profile
+      tags:
+      - Users
+schemes:
+- http
+securityDefinitions:
+  BearerAuth:
+    description: 'Enter JWT token as: Bearer {token}'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
