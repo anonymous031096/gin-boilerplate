@@ -1,369 +1,318 @@
-basePath: /
+basePath: /api
 definitions:
-  http.APIResponse:
+  gin-boilerplate_internal_iam_dto.CreateRoleRequest:
     properties:
-      data: {}
-      message:
-        type: string
-      success:
-        type: boolean
-    type: object
-  iam.CreateRoleRequest:
-    properties:
-      code:
-        type: string
       name:
         type: string
       permissionIds:
         items:
           type: string
+        minItems: 1
         type: array
     required:
-    - code
     - name
+    - permissionIds
     type: object
-  iam.RefreshRequest:
+  gin-boilerplate_internal_iam_dto.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      roleIds:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - email
+    - name
+    - password
+    - roleIds
+    type: object
+  gin-boilerplate_internal_iam_dto.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  gin-boilerplate_internal_iam_dto.PaginationMeta:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+    type: object
+  gin-boilerplate_internal_iam_dto.PermissionResponse:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  gin-boilerplate_internal_iam_dto.RefreshTokenRequest:
     properties:
       refreshToken:
         type: string
     required:
     - refreshToken
     type: object
-  iam.SignInRequest:
+  gin-boilerplate_internal_iam_dto.RegisterRequest:
     properties:
       email:
+        type: string
+      name:
         type: string
       password:
         type: string
     required:
     - email
+    - name
     - password
     type: object
-  iam.SignUpRequest:
+  gin-boilerplate_internal_iam_dto.RoleResponse:
     properties:
-      email:
+      id:
         type: string
-      fullName:
+      name:
         type: string
-      password:
-        type: string
-    required:
-    - email
-    - fullName
-    - password
+      permissions:
+        items:
+          $ref: '#/definitions/gin-boilerplate_internal_iam_dto.PermissionResponse'
+        type: array
     type: object
-  iam.UpdateRoleRequest:
+  gin-boilerplate_internal_iam_dto.TokenResponse:
+    properties:
+      accessToken:
+        type: string
+      refreshToken:
+        type: string
+    type: object
+  gin-boilerplate_internal_iam_dto.UpdateRoleRequest:
     properties:
       name:
         type: string
       permissionIds:
         items:
           type: string
+        minItems: 1
         type: array
-    required:
-    - name
     type: object
-  iam.UpdateUserRequest:
+  gin-boilerplate_internal_iam_dto.UpdateUserRequest:
     properties:
-      fullName:
+      name:
         type: string
-    required:
-    - fullName
+      roleIds:
+        items:
+          type: string
+        type: array
     type: object
-  product.CreateProductRequest:
+  gin-boilerplate_internal_iam_dto.UserListResponse:
     properties:
-      description:
+      data:
+        items:
+          $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UserResponse'
+        type: array
+      meta:
+        $ref: '#/definitions/gin-boilerplate_internal_iam_dto.PaginationMeta'
+    type: object
+  gin-boilerplate_internal_iam_dto.UserResponse:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      id:
         type: string
       name:
         type: string
-      price:
-        type: integer
-    required:
-    - name
-    - price
+      roles:
+        items:
+          $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UserRoleItem'
+        type: array
+      updatedAt:
+        type: string
     type: object
-  product.UpdateProductRequest:
+  gin-boilerplate_internal_iam_dto.UserRoleItem:
     properties:
-      description:
+      id:
         type: string
       name:
         type: string
-      price:
-        type: integer
-    required:
-    - name
-    - price
     type: object
+  gin-boilerplate_internal_todo_dto.CreateTodoRequest:
+    properties:
+      description:
+        type: string
+      title:
+        type: string
+    required:
+    - title
+    type: object
+  gin-boilerplate_internal_todo_dto.PaginationMeta:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+    type: object
+  gin-boilerplate_internal_todo_dto.TodoListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/gin-boilerplate_internal_todo_dto.TodoResponse'
+        type: array
+      meta:
+        $ref: '#/definitions/gin-boilerplate_internal_todo_dto.PaginationMeta'
+    type: object
+  gin-boilerplate_internal_todo_dto.TodoResponse:
+    properties:
+      completed:
+        type: boolean
+      createdAt:
+        type: string
+      createdBy:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      title:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  gin-boilerplate_internal_todo_dto.UpdateTodoRequest:
+    properties:
+      completed:
+        type: boolean
+      description:
+        type: string
+      title:
+        type: string
+    type: object
+  gin-boilerplate_pkg_response.ErrorResponse:
+    properties:
+      message:
+        type: string
+    type: object
+host: localhost:8080
 info:
   contact: {}
-  description: Enterprise boilerplate API with IAM and Product modules.
+  description: Enterprise REST API boilerplate
   title: Gin Boilerplate API
   version: "1.0"
 paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Device ID
+        in: header
+        name: X-Device-Id
+        type: string
+      - description: Login
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/gin-boilerplate_internal_iam_dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.TokenResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      summary: Login
+      tags:
+      - Auth
+  /auth/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UserResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - Auth
   /auth/refresh:
     post:
       consumes:
       - application/json
       parameters:
-      - description: Refresh token payload
+      - description: Device ID
+        in: header
+        name: X-Device-Id
+        type: string
+      - description: Refresh token
         in: body
-        name: request
+        name: body
         required: true
         schema:
-          $ref: '#/definitions/iam.RefreshRequest'
+          $ref: '#/definitions/gin-boilerplate_internal_iam_dto.RefreshTokenRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.APIResponse'
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.TokenResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.APIResponse'
-      summary: Refresh access token
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      summary: Refresh token
       tags:
       - Auth
-  /auth/signin:
+  /auth/register:
     post:
       consumes:
       - application/json
       parameters:
-      - description: Sign in payload
+      - description: Register
         in: body
-        name: request
+        name: body
         required: true
         schema:
-          $ref: '#/definitions/iam.SignInRequest'
+          $ref: '#/definitions/gin-boilerplate_internal_iam_dto.RegisterRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
+        "400":
+          description: Bad Request
           schema:
-            $ref: '#/definitions/http.APIResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-      summary: Sign in user
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      summary: Register
       tags:
       - Auth
-  /auth/signup:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Sign up payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/iam.SignUpRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-      summary: Sign up user
-      tags:
-      - Auth
-  /permissions:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: List permissions
-      tags:
-      - Permissions
-  /permissions/{id}:
-    get:
-      parameters:
-      - description: Permission ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: Get permission by id
-      tags:
-      - Permissions
-  /products:
-    get:
-      parameters:
-      - description: Limit
-        in: query
-        name: limit
-        type: integer
-      - description: Offset
-        in: query
-        name: offset
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: List products
-      tags:
-      - Products
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Create product payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/product.CreateProductRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: Create product
-      tags:
-      - Products
-  /products/{id}:
-    delete:
-      parameters:
-      - description: Product ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: Delete product
-      tags:
-      - Products
-    get:
-      parameters:
-      - description: Product ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: Get product by id
-      tags:
-      - Products
-    put:
-      consumes:
-      - application/json
-      parameters:
-      - description: Product ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Update product payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/product.UpdateProductRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: Update product
-      tags:
-      - Products
   /roles:
     get:
       produces:
@@ -372,11 +321,13 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.APIResponse'
-        "500":
-          description: Internal Server Error
+            items:
+              $ref: '#/definitions/gin-boilerplate_internal_iam_dto.RoleResponse'
+            type: array
+        "400":
+          description: Bad Request
           schema:
-            $ref: '#/definitions/http.APIResponse'
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List roles
@@ -386,23 +337,23 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: Create role payload
+      - description: Create role
         in: body
-        name: request
+        name: body
         required: true
         schema:
-          $ref: '#/definitions/iam.CreateRoleRequest'
+          $ref: '#/definitions/gin-boilerplate_internal_iam_dto.CreateRoleRequest'
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           schema:
-            $ref: '#/definitions/http.APIResponse'
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.RoleResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/http.APIResponse'
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create role
@@ -422,14 +373,39 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.APIResponse'
+            additionalProperties:
+              type: boolean
+            type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/http.APIResponse'
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete role
+      tags:
+      - Roles
+    get:
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.RoleResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get role by ID
       tags:
       - Roles
     put:
@@ -441,38 +417,40 @@ paths:
         name: id
         required: true
         type: string
-      - description: Update role payload
+      - description: Update role
         in: body
-        name: request
+        name: body
         required: true
         schema:
-          $ref: '#/definitions/iam.UpdateRoleRequest'
+          $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UpdateRoleRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.APIResponse'
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.RoleResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/http.APIResponse'
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update role
       tags:
       - Roles
-  /users:
+  /todos:
     get:
       parameters:
-      - description: Limit
+      - default: 1
+        description: Page
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Limit
         in: query
         name: limit
-        type: integer
-      - description: Offset
-        in: query
-        name: offset
         type: integer
       produces:
       - application/json
@@ -480,17 +458,215 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.APIResponse'
-        "500":
-          description: Internal Server Error
+            $ref: '#/definitions/gin-boilerplate_internal_todo_dto.TodoListResponse'
+        "400":
+          description: Bad Request
           schema:
-            $ref: '#/definitions/http.APIResponse'
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List my todos
+      tags:
+      - Todos
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Create todo
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/gin-boilerplate_internal_todo_dto.CreateTodoRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gin-boilerplate_internal_todo_dto.TodoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create todo
+      tags:
+      - Todos
+  /todos/{id}:
+    delete:
+      parameters:
+      - description: Todo ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete todo
+      tags:
+      - Todos
+    get:
+      parameters:
+      - description: Todo ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gin-boilerplate_internal_todo_dto.TodoResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get todo by ID
+      tags:
+      - Todos
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Todo ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update todo
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/gin-boilerplate_internal_todo_dto.UpdateTodoRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gin-boilerplate_internal_todo_dto.TodoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update todo
+      tags:
+      - Todos
+  /users:
+    get:
+      parameters:
+      - default: 1
+        description: Page
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UserListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List users
       tags:
       - Users
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Create user
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/gin-boilerplate_internal_iam_dto.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create user
+      tags:
+      - Users
   /users/{id}:
+    delete:
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete user
+      tags:
+      - Users
     get:
       parameters:
       - description: User ID
@@ -504,18 +680,14 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.APIResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/http.APIResponse'
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UserResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/http.APIResponse'
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Get user by id
+      summary: Get user by ID
       tags:
       - Users
     put:
@@ -527,63 +699,31 @@ paths:
         name: id
         required: true
         type: string
-      - description: Update user payload
+      - description: Update user
         in: body
-        name: request
+        name: body
         required: true
         schema:
-          $ref: '#/definitions/iam.UpdateUserRequest'
+          $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UpdateUserRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.APIResponse'
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UserResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/http.APIResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/http.APIResponse'
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update user
       tags:
       - Users
-  /users/me:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/http.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: Get current user profile
-      tags:
-      - Users
-schemes:
-- http
 securityDefinitions:
   BearerAuth:
-    description: 'Enter JWT token as: Bearer {token}'
+    description: Enter "Bearer {token}"
     in: header
     name: Authorization
     type: apiKey

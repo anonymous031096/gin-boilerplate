@@ -3,65 +3,95 @@ package configs
 import (
 	"fmt"
 	"os"
-	"strconv"
+	"time"
+
+	"github.com/joho/godotenv"
 )
 
+var cfg Config
+
+type PostgresConfig struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	DB       string
+}
+
+func (p PostgresConfig) DSN() string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		p.User, p.Password, p.Host, p.Port, p.DB)
+}
+
+type RedisConfig struct {
+	Host string
+	Port string
+}
+
+func (r RedisConfig) Addr() string {
+	return fmt.Sprintf("%s:%s", r.Host, r.Port)
+}
+
+type JWTConfig struct {
+	AccessSecret  string
+	RefreshSecret string
+	AccessTTL     time.Duration
+	RefreshTTL    time.Duration
+}
+
 type Config struct {
-	AppEnv            string
-	AppPort           string
-	PostgresDSN       string
-	RedisAddr         string
-	RedisPassword     string
-	RedisDB           int
-	JWTAccessSecret   string
-	JWTRefreshSecret  string
-	JWTAccessTTLMin   int
-	JWTRefreshTTLHour int
+	Port     string
+	Postgres PostgresConfig
+	Redis    RedisConfig
+	JWT      JWTConfig
 }
 
-func Load() (Config, error) {
-	redisDB, err := strconv.Atoi(getEnv("REDIS_DB", "0"))
-	if err != nil {
-		return Config{}, fmt.Errorf("invalid REDIS_DB: %w", err)
-	}
-	accessTTL, err := strconv.Atoi(getEnv("JWT_ACCESS_TTL_MINUTES", "15"))
-	if err != nil {
-		return Config{}, fmt.Errorf("invalid JWT_ACCESS_TTL_MINUTES: %w", err)
-	}
-	refreshTTL, err := strconv.Atoi(getEnv("JWT_REFRESH_TTL_HOURS", "168"))
-	if err != nil {
-		return Config{}, fmt.Errorf("invalid JWT_REFRESH_TTL_HOURS: %w", err)
+func Load() Config {
+	if err := godotenv.Load(); err != nil {
+		panic(fmt.Sprintf("failed to load .env: %v", err))
 	}
 
-	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		getEnv("POSTGRES_USER", "app_user"),
-		getEnv("POSTGRES_PASSWORD", "app_pass"),
-		getEnv("POSTGRES_HOST", "localhost"),
-		getEnv("POSTGRES_PORT", "5432"),
-		getEnv("POSTGRES_DB", "app_db"),
-		getEnv("POSTGRES_SSLMODE", "disable"),
-	)
-
-	cfg := Config{
-		AppEnv:            getEnv("APP_ENV", "local"),
-		AppPort:           getEnv("APP_PORT", "8080"),
-		PostgresDSN:       dsn,
-		RedisAddr:         getEnv("REDIS_ADDR", "localhost:6379"),
-		RedisPassword:     getEnv("REDIS_PASSWORD", ""),
-		RedisDB:           redisDB,
-		JWTAccessSecret:   getEnv("JWT_ACCESS_SECRET", "change_me_access_secret"),
-		JWTRefreshSecret:  getEnv("JWT_REFRESH_SECRET", "change_me_refresh_secret"),
-		JWTAccessTTLMin:   accessTTL,
-		JWTRefreshTTLHour: refreshTTL,
+	cfg = Config{
+		Port: mustEnv("PORT"),
+		Postgres: PostgresConfig{
+			Host:     mustEnv("POSTGRES_HOST"),
+			Port:     mustEnv("POSTGRES_PORT"),
+			User:     mustEnv("POSTGRES_USER"),
+			Password: mustEnv("POSTGRES_PASSWORD"),
+			DB:       mustEnv("POSTGRES_DB"),
+		},
+		Redis: RedisConfig{
+			Host: mustEnv("REDIS_HOST"),
+			Port: mustEnv("REDIS_PORT"),
+		},
+		JWT: JWTConfig{
+			AccessSecret:  mustEnv("JWT_ACCESS_SECRET"),
+			RefreshSecret: mustEnv("JWT_REFRESH_SECRET"),
+			AccessTTL:     mustDuration("JWT_ACCESS_TTL"),
+			RefreshTTL:    mustDuration("JWT_REFRESH_TTL"),
+		},
 	}
-	return cfg, nil
+
+	return cfg
 }
 
-func getEnv(key, fallback string) string {
-	v := os.Getenv(key)
-	if v == "" {
-		return fallback
+func Get() Config {
+	return cfg
+}
+
+func mustEnv(key string) string {
+	val := os.Getenv(key)
+	if val == "" {
+		panic(fmt.Sprintf("missing required env: %s", key))
 	}
-	return v
+	return val
+}
+
+func mustDuration(key string) time.Duration {
+	val := mustEnv(key)
+	d, err := time.ParseDuration(val)
+	if err != nil {
+		panic(fmt.Sprintf("invalid duration for %s: %v", key, err))
+	}
+	return d
 }

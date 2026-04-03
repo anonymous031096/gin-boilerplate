@@ -1,7 +1,4 @@
 .env
+tmp/
 bin/
-.coverage
-*.log
 .DS_Store
-/vendor/
-/tmp/

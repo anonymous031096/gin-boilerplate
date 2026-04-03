@@ -2,49 +2,57 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log"
 	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"gin-boilerplate/internal/app"
-	_ "gin-boilerplate/docs"
+	"gin-boilerplate/app"
 
-	"github.com/joho/godotenv"
+	_ "gin-boilerplate/docs"
 )
 
-// @title Gin Boilerplate API
-// @version 1.0
-// @description Enterprise boilerplate API with IAM and Product modules.
-// @BasePath /
-// @schemes http
+// @title           Gin Boilerplate API
+// @version         1.0
+// @description     Enterprise REST API boilerplate
+
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-// @description Enter JWT token as: Bearer {token}
-func main() {
-	_ = godotenv.Load()
+// @description Enter "Bearer {token}"
 
-	application, err := app.Build(context.Background())
-	if err != nil {
-		log.Fatal(err)
+// @host localhost:8080
+// @BasePath /api
+
+func main() {
+	a := app.New()
+	defer a.Close()
+
+	srv := &http.Server{
+		Addr:    ":" + a.Config.Port,
+		Handler: a.Router,
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	go func() {
-		if err := application.Run(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatal(err)
+		log.Printf("server starting on port %s", a.Config.Port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("server error: %v", err)
 		}
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	<-ctx.Done()
+	log.Println("shutting down gracefully...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := application.Shutdown(ctx); err != nil {
-		log.Printf("shutdown error: %v", err)
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("forced shutdown: %v", err)
 	}
+
+	log.Println("server stopped")
 }
