@@ -8,19 +8,7 @@ import (
 
 func Permission(required string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		perms, exists := c.Get("permissions")
-		if !exists {
-			response.Forbidden(c, "permission denied")
-			c.Abort()
-			return
-		}
-
-		permissions, ok := perms.([]string)
-		if !ok {
-			response.Forbidden(c, "permission denied")
-			c.Abort()
-			return
-		}
+		permissions := GetCurrentPermissions(c)
 
 		for _, p := range permissions {
 			if p == required {

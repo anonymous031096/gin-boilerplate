@@ -3,6 +3,7 @@ package handler
 import (
 	"gin-boilerplate/internal/todo/dto"
 	"gin-boilerplate/internal/todo/service"
+	"gin-boilerplate/pkg/middleware"
 	"gin-boilerplate/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -21,6 +22,7 @@ func NewTodoHandler(service *service.TodoService) *TodoHandler {
 // @Tags        Todos
 // @Produce     json
 // @Security    BearerAuth
+// @Security    DeviceID
 // @Param       id path string true "Todo ID"
 // @Success     200 {object} dto.TodoResponse
 // @Failure     403 {object} response.ErrorResponse
@@ -28,7 +30,7 @@ func NewTodoHandler(service *service.TodoService) *TodoHandler {
 // @Router      /todos/{id} [get]
 func (h *TodoHandler) GetByID(c *gin.Context) {
 	id := c.Param("id")
-	userID := c.GetString("user_id")
+	userID := middleware.GetCurrentUserID(c)
 
 	todo, err := h.service.GetByID(c.Request.Context(), id, userID)
 	if err != nil {
@@ -48,13 +50,14 @@ func (h *TodoHandler) GetByID(c *gin.Context) {
 // @Tags        Todos
 // @Produce     json
 // @Security    BearerAuth
+// @Security    DeviceID
 // @Param       page  query int false "Page" default(1)
 // @Param       limit query int false "Limit" default(20)
 // @Success     200 {object} dto.TodoListResponse
 // @Failure     400 {object} response.ErrorResponse
 // @Router      /todos [get]
 func (h *TodoHandler) List(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := middleware.GetCurrentUserID(c)
 	p := response.ParsePagination(c)
 
 	todos, total, err := h.service.List(c.Request.Context(), userID, p.Limit, p.Offset)
@@ -76,6 +79,7 @@ func (h *TodoHandler) List(c *gin.Context) {
 // @Accept      json
 // @Produce     json
 // @Security    BearerAuth
+// @Security    DeviceID
 // @Param       body body dto.CreateTodoRequest true "Create todo"
 // @Success     200 {object} dto.TodoResponse
 // @Failure     400 {object} response.ErrorResponse
@@ -87,7 +91,7 @@ func (h *TodoHandler) Create(c *gin.Context) {
 		return
 	}
 
-	userID := c.GetString("user_id")
+	userID := middleware.GetCurrentUserID(c)
 	todo, err := h.service.Create(c.Request.Context(), req, userID)
 	if err != nil {
 		response.BadRequest(c, err.Error())
@@ -103,6 +107,7 @@ func (h *TodoHandler) Create(c *gin.Context) {
 // @Accept      json
 // @Produce     json
 // @Security    BearerAuth
+// @Security    DeviceID
 // @Param       id   path string true "Todo ID"
 // @Param       body body dto.UpdateTodoRequest true "Update todo"
 // @Success     200 {object} dto.TodoResponse
@@ -118,7 +123,7 @@ func (h *TodoHandler) Update(c *gin.Context) {
 		return
 	}
 
-	userID := c.GetString("user_id")
+	userID := middleware.GetCurrentUserID(c)
 	todo, err := h.service.Update(c.Request.Context(), id, req, userID)
 	if err != nil {
 		if err.Error() == "forbidden: not owner" {
@@ -137,6 +142,7 @@ func (h *TodoHandler) Update(c *gin.Context) {
 // @Tags        Todos
 // @Produce     json
 // @Security    BearerAuth
+// @Security    DeviceID
 // @Param       id path string true "Todo ID"
 // @Success     200 {object} map[string]bool
 // @Failure     403 {object} response.ErrorResponse
@@ -144,7 +150,7 @@ func (h *TodoHandler) Update(c *gin.Context) {
 // @Router      /todos/{id} [delete]
 func (h *TodoHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
-	userID := c.GetString("user_id")
+	userID := middleware.GetCurrentUserID(c)
 
 	if err := h.service.Delete(c.Request.Context(), id, userID); err != nil {
 		if err.Error() == "forbidden: not owner" {

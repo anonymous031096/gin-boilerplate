@@ -3,6 +3,7 @@ package handler
 import (
 	"gin-boilerplate/internal/iam/dto"
 	"gin-boilerplate/internal/iam/service"
+	"gin-boilerplate/pkg/middleware"
 	"gin-boilerplate/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -21,6 +22,7 @@ func NewUserHandler(service *service.UserService) *UserHandler {
 // @Tags        Users
 // @Produce     json
 // @Security    BearerAuth
+// @Security    DeviceID
 // @Param       id path string true "User ID"
 // @Success     200 {object} dto.UserResponse
 // @Failure     404 {object} response.ErrorResponse
@@ -42,6 +44,7 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 // @Tags        Users
 // @Produce     json
 // @Security    BearerAuth
+// @Security    DeviceID
 // @Param       page  query int false "Page" default(1)
 // @Param       limit query int false "Limit" default(20)
 // @Success     200 {object} dto.UserListResponse
@@ -69,6 +72,7 @@ func (h *UserHandler) List(c *gin.Context) {
 // @Accept      json
 // @Produce     json
 // @Security    BearerAuth
+// @Security    DeviceID
 // @Param       body body dto.CreateUserRequest true "Create user"
 // @Success     200 {object} dto.UserResponse
 // @Failure     400 {object} response.ErrorResponse
@@ -80,7 +84,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 		return
 	}
 
-	createdBy := c.GetString("user_id")
+	createdBy := middleware.GetCurrentUserID(c)
 	user, err := h.service.Create(c.Request.Context(), req, createdBy)
 	if err != nil {
 		response.BadRequest(c, err.Error())
@@ -96,6 +100,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 // @Accept      json
 // @Produce     json
 // @Security    BearerAuth
+// @Security    DeviceID
 // @Param       id   path string true "User ID"
 // @Param       body body dto.UpdateUserRequest true "Update user"
 // @Success     200 {object} dto.UserResponse
@@ -110,7 +115,7 @@ func (h *UserHandler) Update(c *gin.Context) {
 		return
 	}
 
-	updatedBy := c.GetString("user_id")
+	updatedBy := middleware.GetCurrentUserID(c)
 	user, err := h.service.Update(c.Request.Context(), id, req, updatedBy)
 	if err != nil {
 		response.BadRequest(c, err.Error())
@@ -125,6 +130,7 @@ func (h *UserHandler) Update(c *gin.Context) {
 // @Tags        Users
 // @Produce     json
 // @Security    BearerAuth
+// @Security    DeviceID
 // @Param       id path string true "User ID"
 // @Success     200 {object} map[string]bool
 // @Failure     400 {object} response.ErrorResponse

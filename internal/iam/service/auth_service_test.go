@@ -65,7 +65,7 @@ func TestLogin_Success(t *testing.T) {
 	result, err := svc.Login(context.Background(), dto.LoginRequest{
 		Email:    "test@example.com",
 		Password: "password123",
-	}, "na")
+	}, "unknown")
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, result.AccessToken)
@@ -89,7 +89,7 @@ func TestLogin_WrongPassword(t *testing.T) {
 	_, err = svc.Login(context.Background(), dto.LoginRequest{
 		Email:    "test@example.com",
 		Password: "wrongpassword",
-	}, "na")
+	}, "unknown")
 
 	assert.Error(t, err)
 }

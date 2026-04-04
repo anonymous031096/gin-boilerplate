@@ -1,10 +1,13 @@
 CREATE TABLE roles (
-    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name       VARCHAR(100) NOT NULL UNIQUE,
-    created_by UUID,
-    updated_by UUID,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name           VARCHAR(100) NOT NULL UNIQUE,
+    is_system      BOOLEAN NOT NULL DEFAULT FALSE,
+    is_superadmin  BOOLEAN NOT NULL DEFAULT FALSE,
+    is_default     BOOLEAN NOT NULL DEFAULT FALSE,
+    created_by     UUID,
+    updated_by     UUID,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TRIGGER roles_updated_at

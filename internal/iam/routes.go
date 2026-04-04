@@ -18,6 +18,7 @@ func RegisterRoutes(d *deps.Deps) {
 
 	// Auth only
 	d.Router.GET("/auth/me", auth, m.AuthHandler.Me)
+	d.Router.PUT("/auth/change-password", auth, m.AuthHandler.ChangePassword)
 
 	// Users — auth + permission
 	users := d.Router.Group("/users", auth)
@@ -28,6 +29,9 @@ func RegisterRoutes(d *deps.Deps) {
 		users.PUT("/:id", perm("user:update"), m.UserHandler.Update)
 		users.DELETE("/:id", perm("user:delete"), m.UserHandler.Delete)
 	}
+
+	// Permissions — auth + permission
+	d.Router.GET("/permissions", auth, perm("permission:read"), m.PermissionHandler.List)
 
 	// Roles — auth + permission
 	roles := d.Router.Group("/roles", auth)

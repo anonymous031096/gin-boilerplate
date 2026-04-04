@@ -3,6 +3,7 @@ package handler
 import (
 	"gin-boilerplate/internal/iam/dto"
 	"gin-boilerplate/internal/iam/service"
+	"gin-boilerplate/pkg/middleware"
 	"gin-boilerplate/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -21,6 +22,7 @@ func NewRoleHandler(service *service.RoleService) *RoleHandler {
 // @Tags        Roles
 // @Produce     json
 // @Security    BearerAuth
+// @Security    DeviceID
 // @Param       id path string true "Role ID"
 // @Success     200 {object} dto.RoleResponse
 // @Failure     404 {object} response.ErrorResponse
@@ -42,6 +44,7 @@ func (h *RoleHandler) GetByID(c *gin.Context) {
 // @Tags        Roles
 // @Produce     json
 // @Security    BearerAuth
+// @Security    DeviceID
 // @Success     200 {array} dto.RoleResponse
 // @Failure     400 {object} response.ErrorResponse
 // @Router      /roles [get]
@@ -61,6 +64,7 @@ func (h *RoleHandler) List(c *gin.Context) {
 // @Accept      json
 // @Produce     json
 // @Security    BearerAuth
+// @Security    DeviceID
 // @Param       body body dto.CreateRoleRequest true "Create role"
 // @Success     200 {object} dto.RoleResponse
 // @Failure     400 {object} response.ErrorResponse
@@ -72,7 +76,7 @@ func (h *RoleHandler) Create(c *gin.Context) {
 		return
 	}
 
-	createdBy := c.GetString("user_id")
+	createdBy := middleware.GetCurrentUserID(c)
 	role, err := h.service.Create(c.Request.Context(), req, createdBy)
 	if err != nil {
 		response.BadRequest(c, err.Error())
@@ -88,6 +92,7 @@ func (h *RoleHandler) Create(c *gin.Context) {
 // @Accept      json
 // @Produce     json
 // @Security    BearerAuth
+// @Security    DeviceID
 // @Param       id   path string true "Role ID"
 // @Param       body body dto.UpdateRoleRequest true "Update role"
 // @Success     200 {object} dto.RoleResponse
@@ -102,7 +107,7 @@ func (h *RoleHandler) Update(c *gin.Context) {
 		return
 	}
 
-	updatedBy := c.GetString("user_id")
+	updatedBy := middleware.GetCurrentUserID(c)
 	role, err := h.service.Update(c.Request.Context(), id, req, updatedBy)
 	if err != nil {
 		response.BadRequest(c, err.Error())
@@ -117,6 +122,7 @@ func (h *RoleHandler) Update(c *gin.Context) {
 // @Tags        Roles
 // @Produce     json
 // @Security    BearerAuth
+// @Security    DeviceID
 // @Param       id path string true "Role ID"
 // @Success     200 {object} map[string]bool
 // @Failure     400 {object} response.ErrorResponse

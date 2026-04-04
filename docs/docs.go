@@ -15,8 +15,60 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/auth/change-password": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Change password",
+                "parameters": [
+                    {
+                        "description": "Change password",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.ChangePasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "If logoutAllDevices=true, returns new tokens",
+                        "schema": {
+                            "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/gin-boilerplate_pkg_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
+                "security": [
+                    {
+                        "DeviceID": []
+                    }
+                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -28,12 +80,6 @@ const docTemplate = `{
                 ],
                 "summary": "Login",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device ID",
-                        "name": "X-Device-Id",
-                        "in": "header"
-                    },
                     {
                         "description": "Login",
                         "name": "body",
@@ -65,6 +111,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
                     }
                 ],
                 "produces": [
@@ -92,6 +141,11 @@ const docTemplate = `{
         },
         "/auth/refresh": {
             "post": {
+                "security": [
+                    {
+                        "DeviceID": []
+                    }
+                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -103,12 +157,6 @@ const docTemplate = `{
                 ],
                 "summary": "Refresh token",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device ID",
-                        "name": "X-Device-Id",
-                        "in": "header"
-                    },
                     {
                         "description": "Refresh token",
                         "name": "body",
@@ -137,6 +185,11 @@ const docTemplate = `{
         },
         "/auth/register": {
             "post": {
+                "security": [
+                    {
+                        "DeviceID": []
+                    }
+                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -171,11 +224,50 @@ const docTemplate = `{
                 }
             }
         },
+        "/permissions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Permissions"
+                ],
+                "summary": "List all permissions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.PermissionResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/gin-boilerplate_pkg_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/roles": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
                     }
                 ],
                 "produces": [
@@ -207,6 +299,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
                     }
                 ],
                 "consumes": [
@@ -251,6 +346,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
                     }
                 ],
                 "produces": [
@@ -288,6 +386,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
                     }
                 ],
                 "consumes": [
@@ -337,6 +438,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
                     }
                 ],
                 "produces": [
@@ -379,6 +483,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
                     }
                 ],
                 "produces": [
@@ -423,6 +530,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
                     }
                 ],
                 "consumes": [
@@ -467,6 +577,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
                     }
                 ],
                 "produces": [
@@ -510,6 +623,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
                     }
                 ],
                 "consumes": [
@@ -565,6 +681,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
                     }
                 ],
                 "produces": [
@@ -613,6 +732,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
                     }
                 ],
                 "produces": [
@@ -657,6 +779,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
                     }
                 ],
                 "consumes": [
@@ -701,6 +826,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
                     }
                 ],
                 "produces": [
@@ -738,6 +866,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
                     }
                 ],
                 "consumes": [
@@ -787,6 +918,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
                     }
                 ],
                 "produces": [
@@ -826,6 +960,24 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "gin-boilerplate_internal_iam_dto.ChangePasswordRequest": {
+            "type": "object",
+            "required": [
+                "newPassword",
+                "oldPassword"
+            ],
+            "properties": {
+                "logoutOtherDevices": {
+                    "type": "boolean"
+                },
+                "newPassword": {
+                    "type": "string"
+                },
+                "oldPassword": {
+                    "type": "string"
+                }
+            }
+        },
         "gin-boilerplate_internal_iam_dto.CreateRoleRequest": {
             "type": "object",
             "required": [
@@ -876,7 +1028,6 @@ const docTemplate = `{
         "gin-boilerplate_internal_iam_dto.LoginRequest": {
             "type": "object",
             "required": [
-                "email",
                 "password"
             ],
             "properties": {
@@ -926,17 +1077,14 @@ const docTemplate = `{
         },
         "gin-boilerplate_internal_iam_dto.RegisterRequest": {
             "type": "object",
-            "required": [
-                "email",
-                "name",
-                "password"
-            ],
             "properties": {
                 "email": {
                     "type": "string"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 32,
+                    "minLength": 2
                 },
                 "password": {
                     "type": "string"
@@ -1147,6 +1295,12 @@ const docTemplate = `{
             "description": "Enter \"Bearer {token}\"",
             "type": "apiKey",
             "name": "Authorization",
+            "in": "header"
+        },
+        "DeviceID": {
+            "description": "Device identifier",
+            "type": "apiKey",
+            "name": "X-Device-Id",
             "in": "header"
         }
     }

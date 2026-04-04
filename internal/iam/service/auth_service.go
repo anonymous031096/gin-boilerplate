@@ -108,6 +108,63 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) err
 	return tx.Commit()
 }
 
+func (s *AuthService) ChangePassword(ctx context.Context, userID string, deviceID string, req dto.ChangePasswordRequest) (*dto.TokenResponse, error) {
+	var hashedPassword string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT password FROM users WHERE id = $1`,
+		userID,
+	).Scan(&hashedPassword)
+	if err != nil {
+		return nil, err
+	}
+
+	if !auth.CheckPassword(req.OldPassword, hashedPassword) {
+		return nil, response.NewFieldErr("oldPassword", "old password is incorrect")
+	}
+
+	hashed, err := auth.HashPassword(req.NewPassword)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = s.db.ExecContext(ctx,
+		`UPDATE users SET password = $1, updated_by = $2 WHERE id = $2`,
+		hashed, userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if !req.LogoutOtherDevices {
+		return nil, nil
+	}
+
+	// Revoke all devices
+	middleware.RevokeAllTokens(s.redis, userID)
+
+	// Generate new tokens for current device
+	roles, perms, err := s.getUserRolesAndPermissions(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := configs.Get()
+	accessToken, err := auth.GenerateAccessToken(cfg.JWT.AccessSecret, userID, deviceID, roles, perms, cfg.JWT.AccessTTL)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken, err := auth.GenerateRefreshToken(cfg.JWT.RefreshSecret, userID, deviceID, cfg.JWT.RefreshTTL)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.TokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
+}
+
 func (s *AuthService) RefreshToken(ctx context.Context, req dto.RefreshTokenRequest, deviceID string) (dto.TokenResponse, error) {
 	claims, err := auth.ParseRefreshToken(configs.Get().JWT.RefreshSecret, req.RefreshToken)
 	if err != nil {
@@ -129,6 +186,9 @@ func (s *AuthService) RefreshToken(ctx context.Context, req dto.RefreshTokenRequ
 			return dto.TokenResponse{}, fmt.Errorf("token has been revoked")
 		}
 	}
+
+	// Revoke old tokens
+	middleware.RevokeTokens(s.redis, userID, deviceID)
 
 	roles, perms, err := s.getUserRolesAndPermissions(ctx, userID)
 	if err != nil {
@@ -152,9 +212,9 @@ func (s *AuthService) RefreshToken(ctx context.Context, req dto.RefreshTokenRequ
 }
 
 func (s *AuthService) getUserRolesAndPermissions(ctx context.Context, userID string) ([]auth.RoleClaim, []string, error) {
-	// Get roles
+	// Get roles with is_superadmin flag
 	roleRows, err := s.db.QueryContext(ctx,
-		`SELECT r.id, r.name FROM roles r
+		`SELECT r.id, r.name, r.is_superadmin FROM roles r
 		 JOIN user_roles ur ON ur.role_id = r.id
 		 WHERE ur.user_id = $1`,
 		userID,
@@ -164,61 +224,117 @@ func (s *AuthService) getUserRolesAndPermissions(ctx context.Context, userID str
 	}
 	defer roleRows.Close()
 
-	var roles []auth.RoleClaim
-	for roleRows.Next() {
-		var role auth.RoleClaim
-		if err := roleRows.Scan(&role.ID, &role.Name); err != nil {
-			return nil, nil, err
-		}
-		roles = append(roles, role)
+	type roleWithFlag struct {
+		auth.RoleClaim
+		isSuperadmin bool
 	}
 
-	// Get permissions per role
-	for i, role := range roles {
-		permRows, err := s.db.QueryContext(ctx,
-			`SELECT p.name FROM permissions p
-			 JOIN role_permissions rp ON rp.permission_id = p.id
-			 WHERE rp.role_id = $1`,
-			role.ID,
-		)
+	var rolesWithFlag []roleWithFlag
+	var hasSuperadmin bool
+	for roleRows.Next() {
+		var r roleWithFlag
+		if err := roleRows.Scan(&r.ID, &r.Name, &r.isSuperadmin); err != nil {
+			return nil, nil, err
+		}
+		if r.isSuperadmin {
+			hasSuperadmin = true
+		}
+		rolesWithFlag = append(rolesWithFlag, r)
+	}
+
+	// Get all permissions once if superadmin
+	var allPerms []string
+	if hasSuperadmin {
+		allPerms, err = s.getAllPermissions(ctx)
 		if err != nil {
 			return nil, nil, err
 		}
+	}
 
-		var perms []string
-		for permRows.Next() {
-			var name string
-			if err := permRows.Scan(&name); err != nil {
-				permRows.Close()
+	// Build role claims with permissions
+	roles := make([]auth.RoleClaim, len(rolesWithFlag))
+	for i, r := range rolesWithFlag {
+		roles[i] = r.RoleClaim
+		if r.isSuperadmin {
+			roles[i].Permissions = allPerms
+		} else {
+			perms, err := s.getRolePermissions(ctx, r.ID)
+			if err != nil {
 				return nil, nil, err
 			}
-			perms = append(perms, name)
+			roles[i].Permissions = perms
 		}
-		permRows.Close()
-
-		roles[i].Permissions = perms
 	}
 
 	// Get direct user permissions
-	directRows, err := s.db.QueryContext(ctx,
+	directPerms, err := s.getDirectPermissions(ctx, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return roles, directPerms, nil
+}
+
+func (s *AuthService) getAllPermissions(ctx context.Context) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT name FROM permissions ORDER BY name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var perms []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		perms = append(perms, name)
+	}
+	return perms, nil
+}
+
+func (s *AuthService) getRolePermissions(ctx context.Context, roleID string) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT p.name FROM permissions p
+		 JOIN role_permissions rp ON rp.permission_id = p.id
+		 WHERE rp.role_id = $1`,
+		roleID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var perms []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		perms = append(perms, name)
+	}
+	return perms, nil
+}
+
+func (s *AuthService) getDirectPermissions(ctx context.Context, userID string) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx,
 		`SELECT p.name FROM permissions p
 		 JOIN user_permissions up ON up.permission_id = p.id
 		 WHERE up.user_id = $1`,
 		userID,
 	)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	defer directRows.Close()
+	defer rows.Close()
 
-	var directPerms []string
-	for directRows.Next() {
+	var perms []string
+	for rows.Next() {
 		var name string
-		if err := directRows.Scan(&name); err != nil {
-			return nil, nil, err
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
 		}
-		directPerms = append(directPerms, name)
+		perms = append(perms, name)
 	}
-
-	return roles, directPerms, nil
+	return perms, nil
 }

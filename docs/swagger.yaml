@@ -1,5 +1,17 @@
 basePath: /api
 definitions:
+  gin-boilerplate_internal_iam_dto.ChangePasswordRequest:
+    properties:
+      logoutOtherDevices:
+        type: boolean
+      newPassword:
+        type: string
+      oldPassword:
+        type: string
+    required:
+    - newPassword
+    - oldPassword
+    type: object
   gin-boilerplate_internal_iam_dto.CreateRoleRequest:
     properties:
       name:
@@ -40,7 +52,6 @@ definitions:
       password:
         type: string
     required:
-    - email
     - password
     type: object
   gin-boilerplate_internal_iam_dto.PaginationMeta:
@@ -71,13 +82,11 @@ definitions:
       email:
         type: string
       name:
+        maxLength: 32
+        minLength: 2
         type: string
       password:
         type: string
-    required:
-    - email
-    - name
-    - password
     type: object
   gin-boilerplate_internal_iam_dto.RoleResponse:
     properties:
@@ -214,15 +223,39 @@ info:
   title: Gin Boilerplate API
   version: "1.0"
 paths:
+  /auth/change-password:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Change password
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/gin-boilerplate_internal_iam_dto.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: If logoutAllDevices=true, returns new tokens
+          schema:
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.TokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - DeviceID: []
+      summary: Change password
+      tags:
+      - Auth
   /auth/login:
     post:
       consumes:
       - application/json
       parameters:
-      - description: Device ID
-        in: header
-        name: X-Device-Id
-        type: string
       - description: Login
         in: body
         name: body
@@ -240,6 +273,8 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      security:
+      - DeviceID: []
       summary: Login
       tags:
       - Auth
@@ -258,6 +293,7 @@ paths:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
+      - DeviceID: []
       summary: Get current user
       tags:
       - Auth
@@ -266,10 +302,6 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: Device ID
-        in: header
-        name: X-Device-Id
-        type: string
       - description: Refresh token
         in: body
         name: body
@@ -287,6 +319,8 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      security:
+      - DeviceID: []
       summary: Refresh token
       tags:
       - Auth
@@ -310,9 +344,32 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      security:
+      - DeviceID: []
       summary: Register
       tags:
       - Auth
+  /permissions:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/gin-boilerplate_internal_iam_dto.PermissionResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - DeviceID: []
+      summary: List all permissions
+      tags:
+      - Permissions
   /roles:
     get:
       produces:
@@ -330,6 +387,7 @@ paths:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
+      - DeviceID: []
       summary: List roles
       tags:
       - Roles
@@ -356,6 +414,7 @@ paths:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
+      - DeviceID: []
       summary: Create role
       tags:
       - Roles
@@ -382,6 +441,7 @@ paths:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
+      - DeviceID: []
       summary: Delete role
       tags:
       - Roles
@@ -405,6 +465,7 @@ paths:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
+      - DeviceID: []
       summary: Get role by ID
       tags:
       - Roles
@@ -436,6 +497,7 @@ paths:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
+      - DeviceID: []
       summary: Update role
       tags:
       - Roles
@@ -465,6 +527,7 @@ paths:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
+      - DeviceID: []
       summary: List my todos
       tags:
       - Todos
@@ -491,6 +554,7 @@ paths:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
+      - DeviceID: []
       summary: Create todo
       tags:
       - Todos
@@ -521,6 +585,7 @@ paths:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
+      - DeviceID: []
       summary: Delete todo
       tags:
       - Todos
@@ -548,6 +613,7 @@ paths:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
+      - DeviceID: []
       summary: Get todo by ID
       tags:
       - Todos
@@ -583,6 +649,7 @@ paths:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
+      - DeviceID: []
       summary: Update todo
       tags:
       - Todos
@@ -612,6 +679,7 @@ paths:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
+      - DeviceID: []
       summary: List users
       tags:
       - Users
@@ -638,6 +706,7 @@ paths:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
+      - DeviceID: []
       summary: Create user
       tags:
       - Users
@@ -664,6 +733,7 @@ paths:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
+      - DeviceID: []
       summary: Delete user
       tags:
       - Users
@@ -687,6 +757,7 @@ paths:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
+      - DeviceID: []
       summary: Get user by ID
       tags:
       - Users
@@ -718,6 +789,7 @@ paths:
             $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
       security:
       - BearerAuth: []
+      - DeviceID: []
       summary: Update user
       tags:
       - Users
@@ -726,5 +798,10 @@ securityDefinitions:
     description: Enter "Bearer {token}"
     in: header
     name: Authorization
+    type: apiKey
+  DeviceID:
+    description: Device identifier
+    in: header
+    name: X-Device-Id
     type: apiKey
 swagger: "2.0"

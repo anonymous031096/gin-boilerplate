@@ -80,6 +80,49 @@ internal/<module>/
 
 After creating a module, register it in `app/modules.go`.
 
+## Performance Rules
+
+- No N+1: never query inside a loop — use JOIN or batch query
+- Add database index on columns used in WHERE, JOIN, ORDER BY
+- No unbounded query: SELECT must have LIMIT (list endpoints use pagination)
+- Use singleflight for frequently called endpoints with same params
+- Reuse DB/Redis connections from pool, never create per request
+- Set context timeout on all external calls (DB, Redis, HTTP)
+
+## Memory Leak Prevention
+
+- Always `defer rows.Close()` after `db.Query()`
+- Always `defer resp.Body.Close()` after `http.Get()`
+- Goroutines must have exit condition (context cancellation or timeout)
+- No accumulating data in long-lived structs (maps/slices that grow without bound)
+- No `defer` inside loops — delays cleanup until function returns
+
+## Security Rules
+
+- All user input must use parameterized queries ($1, $2) — never string concatenation
+- Password stored as bcrypt hash, never plain text
+- JWT secret read from env, never hardcoded
+- Never log or return sensitive data (password, token) in response
+- Rate limit on public endpoints (login, register)
+
+## Transaction Safety
+
+- Multiple write queries must use transaction
+- Always `defer tx.Rollback()` after `BeginTx`
+- No external calls (HTTP, Redis) inside DB transaction — keep transactions short
+
+## Code Quality
+
+- No swallowed errors: every `err` must be checked or returned
+- No dead code: remove unused functions, variables, imports
+- No magic numbers/strings: use constants or config
+- Functions should be under 50 lines — split if longer
+- No duplicate logic: extract helper if same code appears in multiple places
+- Handler only parses request, calls service, returns response — no business logic
+- Never leak internal errors (DB, Redis) to client response
+- JSON tags use camelCase, not snake_case
+- Service receives `context.Context` + explicit params, never `*gin.Context`
+
 ## Do NOT
 
 - Do NOT create repository layer or entity layer
@@ -92,3 +135,4 @@ After creating a module, register it in `app/modules.go`.
 - Do NOT put non-module code in `internal/`
 - Do NOT use auto-discovery or `init()` for module registration
 - Do NOT add foreign key for `created_by`/`updated_by` — keep modules independent
+- Do NOT pass `*gin.Context` to service layer

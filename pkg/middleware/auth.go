@@ -43,17 +43,14 @@ func Auth(redisClient *redis.Client) gin.HandlerFunc {
 		deviceID := claims.GetDeviceID()
 
 		// Check device ID matches X-Device-Id header
-		headerDeviceID := c.GetHeader("X-Device-Id")
-		if headerDeviceID == "" {
-			headerDeviceID = "na"
-		}
+		headerDeviceID := GetDeviceID(c)
 		if deviceID != headerDeviceID {
 			response.Unauthorized(c, "device mismatch")
 			c.Abort()
 			return
 		}
 
-		// Check token revocation: if iat < redis timestamp, token is revoked
+		// Check token revocation per device
 		revokedAt, err := redisClient.Get(context.Background(), revokeKey(userID, deviceID)).Int64()
 		if err == nil && claims.IssuedAt != nil {
 			if claims.IssuedAt.Time.Unix() < revokedAt {
@@ -63,10 +60,17 @@ func Auth(redisClient *redis.Client) gin.HandlerFunc {
 			}
 		}
 
-		c.Set("user_id", userID)
-		c.Set("device_id", deviceID)
-		c.Set("roles", claims.Roles)
-		c.Set("permissions", claims.AllPermissions())
+		// Check token revocation for all devices
+		revokedAllAt, err := redisClient.Get(context.Background(), revokeAllKey(userID)).Int64()
+		if err == nil && claims.IssuedAt != nil {
+			if claims.IssuedAt.Time.Unix() < revokedAllAt {
+				response.Unauthorized(c, "token has been revoked")
+				c.Abort()
+				return
+			}
+		}
+
+		SetCurrentUser(c, userID, deviceID, claims.AllPermissions())
 		c.Next()
 	}
 }
@@ -77,6 +81,16 @@ func RevokeTokens(redisClient *redis.Client, userID string, deviceID string) {
 	redisClient.Set(context.Background(), revokeKey(userID, deviceID), time.Now().Unix(), cfg.JWT.RefreshTTL)
 }
 
+// RevokeAllTokens revokes tokens on ALL devices for a user
+func RevokeAllTokens(redisClient *redis.Client, userID string) {
+	cfg := configs.Get()
+	redisClient.Set(context.Background(), revokeAllKey(userID), time.Now().Unix(), cfg.JWT.RefreshTTL)
+}
+
 func revokeKey(userID string, deviceID string) string {
 	return fmt.Sprintf("revoke:%s:%s", userID, deviceID)
+}
+
+func revokeAllKey(userID string) string {
+	return fmt.Sprintf("revoke:%s:*", userID)
 }

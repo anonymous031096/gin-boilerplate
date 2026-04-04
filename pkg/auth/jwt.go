@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 )
 
 type RoleClaim struct {
@@ -16,10 +15,12 @@ type RoleClaim struct {
 type AccessClaims struct {
 	Roles       []RoleClaim `json:"roles"`
 	Permissions []string    `json:"permissions"`
+	DeviceID    string      `json:"did"`
 	jwt.RegisteredClaims
 }
 
 type RefreshClaims struct {
+	DeviceID string `json:"did"`
 	jwt.RegisteredClaims
 }
 
@@ -27,10 +28,9 @@ func GenerateAccessToken(secret string, userID string, deviceID string, roles []
 	claims := AccessClaims{
 		Roles:       roles,
 		Permissions: permissions,
+		DeviceID:    deviceID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   userID,
-			Audience:  jwt.ClaimStrings{deviceID},
-			ID:        uuid.NewString(),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
@@ -42,10 +42,9 @@ func GenerateAccessToken(secret string, userID string, deviceID string, roles []
 
 func GenerateRefreshToken(secret string, userID string, deviceID string, expiry time.Duration) (string, error) {
 	claims := RefreshClaims{
+		DeviceID: deviceID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   userID,
-			Audience:  jwt.ClaimStrings{deviceID},
-			ID:        uuid.NewString(),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
@@ -108,32 +107,20 @@ func (c *AccessClaims) AllPermissions() []string {
 	return perms
 }
 
-// GetUserID returns sub claim
 func (c *AccessClaims) GetUserID() string {
 	sub, _ := c.GetSubject()
 	return sub
 }
 
-// GetDeviceID returns first aud claim
 func (c *AccessClaims) GetDeviceID() string {
-	aud, _ := c.GetAudience()
-	if len(aud) > 0 {
-		return aud[0]
-	}
-	return "na"
+	return c.DeviceID
 }
 
-// GetUserID returns sub claim
 func (c *RefreshClaims) GetUserID() string {
 	sub, _ := c.GetSubject()
 	return sub
 }
 
-// GetDeviceID returns first aud claim
 func (c *RefreshClaims) GetDeviceID() string {
-	aud, _ := c.GetAudience()
-	if len(aud) > 0 {
-		return aud[0]
-	}
-	return "na"
+	return c.DeviceID
 }

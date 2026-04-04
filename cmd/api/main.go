@@ -22,6 +22,11 @@ import (
 // @name Authorization
 // @description Enter "Bearer {token}"
 
+// @securityDefinitions.apikey DeviceID
+// @in header
+// @name X-Device-Id
+// @description Device identifier
+
 // @host localhost:8080
 // @BasePath /api
 
