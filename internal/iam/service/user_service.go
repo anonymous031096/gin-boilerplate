@@ -10,7 +10,6 @@ import (
 	"gin-boilerplate/pkg/response"
 
 	"github.com/redis/go-redis/v9"
-
 	"golang.org/x/sync/singleflight"
 )
 
@@ -35,26 +34,50 @@ func (s *UserService) GetByID(ctx context.Context, id string) (dto.UserDetailRes
 }
 
 func (s *UserService) getByIDFromDB(ctx context.Context, id string) (dto.UserDetailResponse, error) {
-	var user dto.UserDetailResponse
-	err := s.db.QueryRowContext(ctx,
-		`SELECT id, email, name, created_at, updated_at FROM users WHERE id = $1`,
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT u.id, u.email, u.name, u.created_at, u.updated_at,
+		        COALESCE(r.id::text, '') AS role_id, COALESCE(r.name, '') AS role_name,
+		        COALESCE(p.id::text, '') AS perm_id, COALESCE(p.name, '') AS perm_name
+		 FROM users u
+		 LEFT JOIN user_roles ur ON ur.user_id = u.id
+		 LEFT JOIN roles r ON r.id = ur.role_id
+		 LEFT JOIN user_permissions up ON up.user_id = u.id
+		 LEFT JOIN permissions p ON p.id = up.permission_id
+		 WHERE u.id = $1`,
 		id,
-	).Scan(&user.ID, &user.Email, &user.Name, &user.CreatedAt, &user.UpdatedAt)
+	)
 	if err != nil {
 		return dto.UserDetailResponse{}, err
+	}
+	defer rows.Close()
+
+	var user dto.UserDetailResponse
+	user.Roles = make([]dto.UserRoleItem, 0)
+	user.Permissions = make([]dto.UserPermissionItem, 0)
+	var found bool
+	seenRoles := make(map[string]bool)
+	seenPerms := make(map[string]bool)
+
+	for rows.Next() {
+		var roleID, roleName, permID, permName string
+		if err := rows.Scan(&user.ID, &user.Email, &user.Name, &user.CreatedAt, &user.UpdatedAt,
+			&roleID, &roleName, &permID, &permName); err != nil {
+			return dto.UserDetailResponse{}, err
+		}
+		found = true
+		if roleID != "" && !seenRoles[roleID] {
+			seenRoles[roleID] = true
+			user.Roles = append(user.Roles, dto.UserRoleItem{ID: roleID, Name: roleName})
+		}
+		if permID != "" && !seenPerms[permID] {
+			seenPerms[permID] = true
+			user.Permissions = append(user.Permissions, dto.UserPermissionItem{ID: permID, Name: permName})
+		}
 	}
 
-	roles, err := s.getUserRoles(ctx, id)
-	if err != nil {
-		return dto.UserDetailResponse{}, err
+	if !found {
+		return dto.UserDetailResponse{}, sql.ErrNoRows
 	}
-	user.Roles = roles
-
-	permissions, err := s.getUserPermissions(ctx, id)
-	if err != nil {
-		return dto.UserDetailResponse{}, err
-	}
-	user.Permissions = permissions
 
 	return user, nil
 }
