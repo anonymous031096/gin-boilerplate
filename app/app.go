@@ -6,6 +6,7 @@ import (
 	"gin-boilerplate/configs"
 	"gin-boilerplate/pkg/cache"
 	"gin-boilerplate/pkg/db"
+	"gin-boilerplate/pkg/middleware"
 	"gin-boilerplate/pkg/validator"
 
 	"github.com/gin-gonic/gin"
@@ -46,6 +47,9 @@ func New() *App {
 
 	// Validator
 	validator.Init()
+
+	// Token revocation (in-memory + Pub/Sub sync)
+	middleware.InitRevokeSubscriber(redisClient)
 
 	app := &App{
 		Config: cfg,

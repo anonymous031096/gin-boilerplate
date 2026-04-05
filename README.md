@@ -288,22 +288,36 @@ Includes `.claude/` configuration and `CLAUDE.md` rules for AI code review. Clau
 
 ## Load Test Results
 
-Tested with k6 on a real VPS (4 CPU / 8GB RAM), single instance, PostgreSQL + Redis on same server.
+Tested with wrk on a real VPS (4 CPU / 8GB RAM), single instance, PostgreSQL + Redis on same server. Endpoint: `GET /api/users/me` (JWT auth + SHA-256 fingerprint + Redis revocation + DB query).
 
-**Remote test** (k6 from local machine to VPS over internet):
-
-| VUs   | RPS   | P95 Latency | Error Rate |
-| ----- | ----- | ----------- | ---------- |
-| 100   | 1,805 | 37ms        | 0%         |
-| 200   | 3,324 | 48ms        | 0%         |
-| 500   | 4,062 | 130ms       | 0%         |
-| 1,000 | 5,154 | 178ms       | 0%         |
-| 2,000 | 7,000 | 269ms       | 0%         |
+| Connections | RPS | Avg Latency | Errors |
+| ----------- | ------ | ----------- | ------ |
+| 100 | 11,001 | 9ms | 0 |
+| 200 | 12,022 | 17ms | 0 |
+| 500 | 12,431 | 41ms | 0 |
+| 1,000 | 12,205 | 83ms | 0 |
+| 2,000 | 12,374 | 164ms | 0 |
+| 5,000 | 11,757 | 430ms | 0 |
+| 10,000 | 11,543 | 872ms | 0 |
+| 20,000 | 7,420 | 2.3s | 0 |
 
 Run load tests:
 
 ```bash
-k6 run k6/auth_me.js
+# Login to get token
+UA="bench"
+TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -H "X-Device-Id: test" \
+  -H "User-Agent: $UA" \
+  -d '{"email":"admin@init.com","password":"Abc@1234"}' | jq -r '.accessToken')
+
+# 20k concurrent connections
+wrk -t4 -c20000 -d60s --timeout 100s \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Device-Id: test" \
+  -H "User-Agent: $UA" \
+  http://localhost:8080/api/users/me
 ```
 
 ## Contributing

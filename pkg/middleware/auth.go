@@ -1,10 +1,8 @@
 package middleware
 
 import (
-	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"gin-boilerplate/configs"
 	"gin-boilerplate/pkg/auth"
@@ -50,24 +48,11 @@ func Auth(redisClient *redis.Client) gin.HandlerFunc {
 			return
 		}
 
-		// Check token revocation per device
-		revokedAt, err := redisClient.Get(context.Background(), revokeKey(userID, deviceID)).Int64()
-		if err == nil && claims.IssuedAt != nil {
-			if claims.IssuedAt.Time.Unix() < revokedAt {
-				response.Unauthorized(c, "token has been revoked")
-				c.Abort()
-				return
-			}
-		}
-
-		// Check token revocation for all devices
-		revokedAllAt, err := redisClient.Get(context.Background(), revokeAllKey(userID)).Int64()
-		if err == nil && claims.IssuedAt != nil {
-			if claims.IssuedAt.Time.Unix() < revokedAllAt {
-				response.Unauthorized(c, "token has been revoked")
-				c.Abort()
-				return
-			}
+		// Check token revocation (in-memory, no Redis call)
+		if claims.IssuedAt != nil && IsRevoked(userID, deviceID, claims.IssuedAt.Time.Unix()) {
+			response.Unauthorized(c, "token has been revoked")
+			c.Abort()
+			return
 		}
 
 		SetCurrentUser(c, userID, deviceID, claims.AllPermissions())
@@ -75,16 +60,14 @@ func Auth(redisClient *redis.Client) gin.HandlerFunc {
 	}
 }
 
-// RevokeTokens saves current timestamp to redis, invalidating all tokens issued before this time
+// RevokeTokens revokes tokens for a specific user+device.
 func RevokeTokens(redisClient *redis.Client, userID string, deviceID string) {
-	cfg := configs.Get()
-	redisClient.Set(context.Background(), revokeKey(userID, deviceID), time.Now().Unix(), cfg.JWT.RefreshTTL)
+	publishRevoke(redisClient, revokeKey(userID, deviceID))
 }
 
-// RevokeAllTokens revokes tokens on ALL devices for a user
+// RevokeAllTokens revokes tokens on ALL devices for a user.
 func RevokeAllTokens(redisClient *redis.Client, userID string) {
-	cfg := configs.Get()
-	redisClient.Set(context.Background(), revokeAllKey(userID), time.Now().Unix(), cfg.JWT.RefreshTTL)
+	publishRevoke(redisClient, revokeAllKey(userID))
 }
 
 func revokeKey(userID string, deviceID string) string {
