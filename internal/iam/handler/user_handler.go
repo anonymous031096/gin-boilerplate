@@ -17,6 +17,27 @@ func NewUserHandler(service *service.UserService) *UserHandler {
 	return &UserHandler{service: service}
 }
 
+// Me godoc
+// @Summary     Get current user
+// @Tags        Users
+// @Produce     json
+// @Security    BearerAuth
+// @Security    DeviceID
+// @Success     200 {object} dto.UserDetailResponse
+// @Failure     404 {object} response.ErrorResponse
+// @Router      /users/me [get]
+func (h *UserHandler) Me(c *gin.Context) {
+	userID := middleware.GetCurrentUserID(c)
+
+	user, err := h.service.GetByID(c.Request.Context(), userID)
+	if err != nil {
+		response.NotFound(c, "user not found")
+		return
+	}
+
+	response.Success(c, user)
+}
+
 // GetByID godoc
 // @Summary     Get user by ID
 // @Tags        Users
@@ -24,7 +45,7 @@ func NewUserHandler(service *service.UserService) *UserHandler {
 // @Security    BearerAuth
 // @Security    DeviceID
 // @Param       id path string true "User ID"
-// @Success     200 {object} dto.UserResponse
+// @Success     200 {object} dto.UserDetailResponse
 // @Failure     404 {object} response.ErrorResponse
 // @Router      /users/{id} [get]
 func (h *UserHandler) GetByID(c *gin.Context) {
@@ -74,7 +95,7 @@ func (h *UserHandler) List(c *gin.Context) {
 // @Security    BearerAuth
 // @Security    DeviceID
 // @Param       body body dto.CreateUserRequest true "Create user"
-// @Success     200 {object} dto.UserResponse
+// @Success     200 {object} dto.UserDetailResponse
 // @Failure     400 {object} response.ErrorResponse
 // @Router      /users [post]
 func (h *UserHandler) Create(c *gin.Context) {
@@ -103,7 +124,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 // @Security    DeviceID
 // @Param       id   path string true "User ID"
 // @Param       body body dto.UpdateUserRequest true "Update user"
-// @Success     200 {object} dto.UserResponse
+// @Success     200 {object} dto.UserDetailResponse
 // @Failure     400 {object} response.ErrorResponse
 // @Router      /users/{id} [put]
 func (h *UserHandler) Update(c *gin.Context) {
@@ -138,8 +159,9 @@ func (h *UserHandler) Update(c *gin.Context) {
 func (h *UserHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
 
-	if err := h.service.Delete(c.Request.Context(), id); err != nil {
-		response.BadRequest(c, err.Error())
+	deletedBy := middleware.GetCurrentUserID(c)
+	if err := h.service.Delete(c.Request.Context(), id, deletedBy); err != nil {
+		response.HandleError(c, err)
 		return
 	}
 

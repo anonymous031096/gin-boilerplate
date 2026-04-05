@@ -29,11 +29,11 @@ WHERE r.is_default = true AND p.name IN ('user:read', 'role:read');
 
 -- Admin user (password: Abc@1234)
 INSERT INTO users (email, password, name) VALUES
-    ('admin@example.com',
+    ('admin@init.com',
      '$2a$10$DsJ.NluXLiZ8gH0/k6cnROu6j2bZ5eenuLgJXw4MjcNZl9uQLMuDa',
      'Admin');
 
 -- Assign superadmin role to admin user
 INSERT INTO user_roles (user_id, role_id)
 SELECT u.id, r.id FROM users u, roles r
-WHERE u.email = 'admin@example.com' AND r.is_superadmin = true;
+WHERE u.email = 'admin@init.com' AND r.is_superadmin = true;

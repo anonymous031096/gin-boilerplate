@@ -22,7 +22,7 @@ func (s *PermissionService) List(ctx context.Context) ([]dto.PermissionResponse,
 	}
 	defer rows.Close()
 
-	var permissions []dto.PermissionResponse
+	permissions := make([]dto.PermissionResponse, 0)
 	for rows.Next() {
 		var perm dto.PermissionResponse
 		if err := rows.Scan(&perm.ID, &perm.Name); err != nil {

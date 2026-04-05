@@ -282,7 +282,7 @@ func (s *AuthService) getAllPermissions(ctx context.Context) ([]string, error) {
 	}
 	defer rows.Close()
 
-	var perms []string
+	perms := make([]string, 0)
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {
@@ -305,7 +305,7 @@ func (s *AuthService) getRolePermissions(ctx context.Context, roleID string) ([]
 	}
 	defer rows.Close()
 
-	var perms []string
+	perms := make([]string, 0)
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {
@@ -328,7 +328,7 @@ func (s *AuthService) getDirectPermissions(ctx context.Context, userID string) (
 	}
 	defer rows.Close()
 
-	var perms []string
+	perms := make([]string, 0)
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {

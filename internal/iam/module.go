@@ -15,12 +15,12 @@ type Module struct {
 
 func NewModule(d *deps.Deps) *Module {
 	authService := service.NewAuthService(d.DB, d.Redis)
-	userService := service.NewUserService(d.DB)
-	roleService := service.NewRoleService(d.DB)
+	userService := service.NewUserService(d.DB, d.Redis)
+	roleService := service.NewRoleService(d.DB, d.Redis)
 	permissionService := service.NewPermissionService(d.DB)
 
 	return &Module{
-		AuthHandler:       handler.NewAuthHandler(authService, userService),
+		AuthHandler:       handler.NewAuthHandler(authService),
 		UserHandler:       handler.NewUserHandler(userService),
 		RoleHandler:       handler.NewRoleHandler(roleService),
 		PermissionHandler: handler.NewPermissionHandler(permissionService),

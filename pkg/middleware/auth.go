@@ -43,7 +43,7 @@ func Auth(redisClient *redis.Client) gin.HandlerFunc {
 		deviceID := claims.GetDeviceID()
 
 		// Check device ID matches X-Device-Id header
-		headerDeviceID := GetDeviceID(c)
+		headerDeviceID := GetDeviceFingerprint(c)
 		if deviceID != headerDeviceID {
 			response.Unauthorized(c, "device mismatch")
 			c.Abort()

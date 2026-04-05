@@ -58,7 +58,7 @@ func (s *TodoService) List(ctx context.Context, userID string, limit, offset int
 	}
 	defer rows.Close()
 
-	var todos []dto.TodoResponse
+	todos := make([]dto.TodoResponse, 0)
 	for rows.Next() {
 		var todo dto.TodoResponse
 		if err := rows.Scan(&todo.ID, &todo.Title, &todo.Description, &todo.Completed, &todo.CreatedBy, &todo.CreatedAt, &todo.UpdatedAt); err != nil {

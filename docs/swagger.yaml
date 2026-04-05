@@ -32,8 +32,11 @@ definitions:
       name:
         type: string
       password:
-        minLength: 6
         type: string
+      permissionIds:
+        items:
+          type: string
+        type: array
       roleIds:
         items:
           type: string
@@ -88,16 +91,35 @@ definitions:
       password:
         type: string
     type: object
-  gin-boilerplate_internal_iam_dto.RoleResponse:
+  gin-boilerplate_internal_iam_dto.RoleDetailResponse:
     properties:
       id:
         type: string
+      isDefault:
+        type: boolean
+      isSuperadmin:
+        type: boolean
+      isSystem:
+        type: boolean
       name:
         type: string
       permissions:
         items:
           $ref: '#/definitions/gin-boilerplate_internal_iam_dto.PermissionResponse'
         type: array
+    type: object
+  gin-boilerplate_internal_iam_dto.RoleResponse:
+    properties:
+      id:
+        type: string
+      isDefault:
+        type: boolean
+      isSuperadmin:
+        type: boolean
+      isSystem:
+        type: boolean
+      name:
+        type: string
     type: object
   gin-boilerplate_internal_iam_dto.TokenResponse:
     properties:
@@ -120,10 +142,35 @@ definitions:
     properties:
       name:
         type: string
+      permissionIds:
+        items:
+          type: string
+        type: array
       roleIds:
         items:
           type: string
         type: array
+    type: object
+  gin-boilerplate_internal_iam_dto.UserDetailResponse:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      permissions:
+        items:
+          $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UserPermissionItem'
+        type: array
+      roles:
+        items:
+          $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UserRoleItem'
+        type: array
+      updatedAt:
+        type: string
     type: object
   gin-boilerplate_internal_iam_dto.UserListResponse:
     properties:
@@ -133,6 +180,13 @@ definitions:
         type: array
       meta:
         $ref: '#/definitions/gin-boilerplate_internal_iam_dto.PaginationMeta'
+    type: object
+  gin-boilerplate_internal_iam_dto.UserPermissionItem:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
     type: object
   gin-boilerplate_internal_iam_dto.UserResponse:
     properties:
@@ -238,7 +292,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: If logoutAllDevices=true, returns new tokens
+          description: If logoutOtherDevices=true, returns new tokens
           schema:
             $ref: '#/definitions/gin-boilerplate_internal_iam_dto.TokenResponse'
         "400":
@@ -276,25 +330,6 @@ paths:
       security:
       - DeviceID: []
       summary: Login
-      tags:
-      - Auth
-  /auth/me:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UserResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
-      security:
-      - BearerAuth: []
-      - DeviceID: []
-      summary: Get current user
       tags:
       - Auth
   /auth/refresh:
@@ -407,7 +442,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.RoleResponse'
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.RoleDetailResponse'
         "400":
           description: Bad Request
           schema:
@@ -458,7 +493,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.RoleResponse'
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.RoleDetailResponse'
         "404":
           description: Not Found
           schema:
@@ -490,7 +525,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.RoleResponse'
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.RoleDetailResponse'
         "400":
           description: Bad Request
           schema:
@@ -699,7 +734,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UserResponse'
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UserDetailResponse'
         "400":
           description: Bad Request
           schema:
@@ -750,7 +785,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UserResponse'
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UserDetailResponse'
         "404":
           description: Not Found
           schema:
@@ -782,7 +817,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UserResponse'
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UserDetailResponse'
         "400":
           description: Bad Request
           schema:
@@ -791,6 +826,25 @@ paths:
       - BearerAuth: []
       - DeviceID: []
       summary: Update user
+      tags:
+      - Users
+  /users/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gin-boilerplate_internal_iam_dto.UserDetailResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/gin-boilerplate_pkg_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - DeviceID: []
+      summary: Get current user
       tags:
       - Users
 securityDefinitions:

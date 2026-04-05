@@ -55,6 +55,9 @@ func Success[T any](c *gin.Context, data T) {
 }
 
 func List[T any](c *gin.Context, data []T, meta PaginationMeta) {
+	if data == nil {
+		data = []T{}
+	}
 	c.JSON(200, ListResponse[T]{Data: data, Meta: meta})
 }
 

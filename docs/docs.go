@@ -48,7 +48,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "If logoutAllDevices=true, returns new tokens",
+                        "description": "If logoutOtherDevices=true, returns new tokens",
                         "schema": {
                             "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.TokenResponse"
                         }
@@ -99,39 +99,6 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/gin-boilerplate_pkg_response.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/me": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "DeviceID": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Get current user",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.UserResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/gin-boilerplate_pkg_response.ErrorResponse"
                         }
@@ -329,7 +296,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.RoleResponse"
+                            "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.RoleDetailResponse"
                         }
                     },
                     "400": {
@@ -371,7 +338,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.RoleResponse"
+                            "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.RoleDetailResponse"
                         }
                     },
                     "404": {
@@ -423,7 +390,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.RoleResponse"
+                            "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.RoleDetailResponse"
                         }
                     },
                     "400": {
@@ -809,11 +776,44 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.UserResponse"
+                            "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.UserDetailResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/gin-boilerplate_pkg_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "DeviceID": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.UserDetailResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/gin-boilerplate_pkg_response.ErrorResponse"
                         }
@@ -851,7 +851,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.UserResponse"
+                            "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.UserDetailResponse"
                         }
                     },
                     "404": {
@@ -903,7 +903,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.UserResponse"
+                            "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.UserDetailResponse"
                         }
                     },
                     "400": {
@@ -1013,8 +1013,13 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "password": {
-                    "type": "string",
-                    "minLength": 6
+                    "type": "string"
+                },
+                "permissionIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "roleIds": {
                     "type": "array",
@@ -1091,11 +1096,20 @@ const docTemplate = `{
                 }
             }
         },
-        "gin-boilerplate_internal_iam_dto.RoleResponse": {
+        "gin-boilerplate_internal_iam_dto.RoleDetailResponse": {
             "type": "object",
             "properties": {
                 "id": {
                     "type": "string"
+                },
+                "isDefault": {
+                    "type": "boolean"
+                },
+                "isSuperadmin": {
+                    "type": "boolean"
+                },
+                "isSystem": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -1105,6 +1119,26 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.PermissionResponse"
                     }
+                }
+            }
+        },
+        "gin-boilerplate_internal_iam_dto.RoleResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "isDefault": {
+                    "type": "boolean"
+                },
+                "isSuperadmin": {
+                    "type": "boolean"
+                },
+                "isSystem": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
                 }
             }
         },
@@ -1140,11 +1174,49 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "permissionIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "roleIds": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "gin-boilerplate_internal_iam_dto.UserDetailResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.UserPermissionItem"
+                    }
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.UserRoleItem"
+                    }
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         },
@@ -1159,6 +1231,17 @@ const docTemplate = `{
                 },
                 "meta": {
                     "$ref": "#/definitions/gin-boilerplate_internal_iam_dto.PaginationMeta"
+                }
+            }
+        },
+        "gin-boilerplate_internal_iam_dto.UserPermissionItem": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
                 }
             }
         },

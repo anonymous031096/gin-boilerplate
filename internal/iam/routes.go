@@ -16,13 +16,13 @@ func RegisterRoutes(d *deps.Deps) {
 	d.Router.POST("/auth/register", m.AuthHandler.Register)
 	d.Router.POST("/auth/refresh", m.AuthHandler.RefreshToken)
 
-	// Auth only
-	d.Router.GET("/auth/me", auth, m.AuthHandler.Me)
+	// Auth — authenticated
 	d.Router.PUT("/auth/change-password", auth, m.AuthHandler.ChangePassword)
 
 	// Users — auth + permission
 	users := d.Router.Group("/users", auth)
 	{
+		users.GET("/me", m.UserHandler.Me)
 		users.GET("", perm("user:read"), m.UserHandler.List)
 		users.GET("/:id", perm("user:read"), m.UserHandler.GetByID)
 		users.POST("", perm("user:create"), m.UserHandler.Create)

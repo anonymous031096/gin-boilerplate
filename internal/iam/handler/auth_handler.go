@@ -11,11 +11,10 @@ import (
 
 type AuthHandler struct {
 	authService *service.AuthService
-	userService *service.UserService
 }
 
-func NewAuthHandler(authService *service.AuthService, userService *service.UserService) *AuthHandler {
-	return &AuthHandler{authService: authService, userService: userService}
+func NewAuthHandler(authService *service.AuthService) *AuthHandler {
+	return &AuthHandler{authService: authService}
 }
 
 // Login godoc
@@ -35,7 +34,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	deviceID := middleware.GetDeviceID(c)
+	deviceID := middleware.GetDeviceFingerprint(c)
 	token, err := h.authService.Login(c.Request.Context(), req, deviceID)
 	if err != nil {
 		response.Unauthorized(c, "invalid email or password")
@@ -87,7 +86,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	deviceID := middleware.GetDeviceID(c)
+	deviceID := middleware.GetDeviceFingerprint(c)
 	token, err := h.authService.RefreshToken(c.Request.Context(), req, deviceID)
 	if err != nil {
 		response.Unauthorized(c, "invalid refresh token")
@@ -105,7 +104,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 // @Security    BearerAuth
 // @Security    DeviceID
 // @Param       body body dto.ChangePasswordRequest true "Change password"
-// @Success     200 {object} dto.TokenResponse "If logoutAllDevices=true, returns new tokens"
+// @Success     200 {object} dto.TokenResponse "If logoutOtherDevices=true, returns new tokens"
 // @Failure     400 {object} response.ErrorResponse
 // @Router      /auth/change-password [put]
 func (h *AuthHandler) ChangePassword(c *gin.Context) {
@@ -116,7 +115,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	}
 
 	userID := middleware.GetCurrentUserID(c)
-	deviceID := middleware.GetDeviceID(c)
+	deviceID := middleware.GetDeviceFingerprint(c)
 	token, err := h.authService.ChangePassword(c.Request.Context(), userID, deviceID, req)
 	if err != nil {
 		response.HandleError(c, err)
@@ -129,25 +128,4 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	}
 
 	c.Status(200)
-}
-
-// Me godoc
-// @Summary     Get current user
-// @Tags        Auth
-// @Produce     json
-// @Security    BearerAuth
-// @Security    DeviceID
-// @Success     200 {object} dto.UserResponse
-// @Failure     404 {object} response.ErrorResponse
-// @Router      /auth/me [get]
-func (h *AuthHandler) Me(c *gin.Context) {
-	userID := middleware.GetCurrentUserID(c)
-
-	user, err := h.userService.GetByID(c.Request.Context(), userID)
-	if err != nil {
-		response.NotFound(c, "user not found")
-		return
-	}
-
-	response.Success(c, user)
 }

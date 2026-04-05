@@ -33,6 +33,12 @@
 - NO `success` boolean field in response — HTTP status code is sufficient
 - Response helpers MUST use Go generics `[T any]`, not `any`/`interface{}`
 
+### Response DTO Naming Convention
+- `<Name>Response` — for list/table endpoints, summary fields only
+- `<Name>DetailResponse` — for get-by-id endpoints, full fields including relations
+- `OptionResponse` — shared struct in `pkg/response/` for dropdown/select (id, value, label), used across all modules
+- Example: `GET /roles` returns `[]RoleResponse`, `GET /roles/:id` returns `RoleDetailResponse`, `GET /roles/options` returns `[]OptionResponse`
+
 ### Database
 - Use `jackc/pgx` driver with `database/sql` interface
 - All main tables MUST have audit columns: `id (UUID, gen_random_uuid())`, `created_by (UUID)`, `updated_by (UUID)`, `created_at (TIMESTAMPTZ)`, `updated_at (TIMESTAMPTZ)`
@@ -121,6 +127,7 @@ After creating a module, register it in `app/modules.go`.
 - Handler only parses request, calls service, returns response — no business logic
 - Never leak internal errors (DB, Redis) to client response
 - JSON tags use camelCase, not snake_case
+- Slice/array fields must return `[]` not `null` — use `make([]T, 0)` instead of `var x []T`
 - Service receives `context.Context` + explicit params, never `*gin.Context`
 
 ## Do NOT

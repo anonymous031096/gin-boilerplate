@@ -6,60 +6,55 @@ import (
 
 	"gin-boilerplate/internal/iam/dto"
 	"gin-boilerplate/pkg/auth"
+	"gin-boilerplate/pkg/middleware"
+	"gin-boilerplate/pkg/response"
+
+	"github.com/redis/go-redis/v9"
 
 	"golang.org/x/sync/singleflight"
 )
 
 type UserService struct {
-	db *sql.DB
-	sf singleflight.Group
+	db    *sql.DB
+	redis *redis.Client
+	sf    singleflight.Group
 }
 
-func NewUserService(db *sql.DB) *UserService {
-	return &UserService{db: db}
+func NewUserService(db *sql.DB, redis *redis.Client) *UserService {
+	return &UserService{db: db, redis: redis}
 }
 
-func (s *UserService) GetByID(ctx context.Context, id string) (dto.UserResponse, error) {
+func (s *UserService) GetByID(ctx context.Context, id string) (dto.UserDetailResponse, error) {
 	result, err, _ := s.sf.Do("user:"+id, func() (any, error) {
 		return s.getByIDFromDB(ctx, id)
 	})
 	if err != nil {
-		return dto.UserResponse{}, err
+		return dto.UserDetailResponse{}, err
 	}
-	return result.(dto.UserResponse), nil
+	return result.(dto.UserDetailResponse), nil
 }
 
-func (s *UserService) getByIDFromDB(ctx context.Context, id string) (dto.UserResponse, error) {
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT u.id, u.email, u.name, u.created_at, u.updated_at,
-		        COALESCE(r.id::text, '') as role_id, COALESCE(r.name, '') as role_name
-		 FROM users u
-		 LEFT JOIN user_roles ur ON ur.user_id = u.id
-		 LEFT JOIN roles r ON r.id = ur.role_id
-		 WHERE u.id = $1`,
+func (s *UserService) getByIDFromDB(ctx context.Context, id string) (dto.UserDetailResponse, error) {
+	var user dto.UserDetailResponse
+	err := s.db.QueryRowContext(ctx,
+		`SELECT id, email, name, created_at, updated_at FROM users WHERE id = $1`,
 		id,
-	)
+	).Scan(&user.ID, &user.Email, &user.Name, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
-		return dto.UserResponse{}, err
-	}
-	defer rows.Close()
-
-	var user dto.UserResponse
-	var found bool
-	for rows.Next() {
-		var roleID, roleName string
-		if err := rows.Scan(&user.ID, &user.Email, &user.Name, &user.CreatedAt, &user.UpdatedAt, &roleID, &roleName); err != nil {
-			return dto.UserResponse{}, err
-		}
-		found = true
-		if roleID != "" {
-			user.Roles = append(user.Roles, dto.UserRoleItem{ID: roleID, Name: roleName})
-		}
+		return dto.UserDetailResponse{}, err
 	}
 
-	if !found {
-		return dto.UserResponse{}, sql.ErrNoRows
+	roles, err := s.getUserRoles(ctx, id)
+	if err != nil {
+		return dto.UserDetailResponse{}, err
 	}
+	user.Roles = roles
+
+	permissions, err := s.getUserPermissions(ctx, id)
+	if err != nil {
+		return dto.UserDetailResponse{}, err
+	}
+	user.Permissions = permissions
 
 	return user, nil
 }
@@ -83,7 +78,7 @@ func (s *UserService) List(ctx context.Context, limit, offset int) ([]dto.UserRe
 	}
 	defer rows.Close()
 
-	var users []dto.UserResponse
+	users := make([]dto.UserResponse, 0)
 	for rows.Next() {
 		var user dto.UserResponse
 		if err := rows.Scan(&user.ID, &user.Email, &user.Name, &user.CreatedAt, &user.UpdatedAt); err != nil {
@@ -101,15 +96,15 @@ func (s *UserService) List(ctx context.Context, limit, offset int) ([]dto.UserRe
 	return users, total, nil
 }
 
-func (s *UserService) Create(ctx context.Context, req dto.CreateUserRequest, createdBy string) (dto.UserResponse, error) {
+func (s *UserService) Create(ctx context.Context, req dto.CreateUserRequest, createdBy string) (dto.UserDetailResponse, error) {
 	hashed, err := auth.HashPassword(req.Password)
 	if err != nil {
-		return dto.UserResponse{}, err
+		return dto.UserDetailResponse{}, err
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return dto.UserResponse{}, err
+		return dto.UserDetailResponse{}, err
 	}
 	defer tx.Rollback()
 
@@ -121,7 +116,7 @@ func (s *UserService) Create(ctx context.Context, req dto.CreateUserRequest, cre
 		req.Email, hashed, req.Name, createdBy,
 	).Scan(&id)
 	if err != nil {
-		return dto.UserResponse{}, err
+		return dto.UserDetailResponse{}, err
 	}
 
 	for _, roleID := range req.RoleIDs {
@@ -130,21 +125,47 @@ func (s *UserService) Create(ctx context.Context, req dto.CreateUserRequest, cre
 			id, roleID,
 		)
 		if err != nil {
-			return dto.UserResponse{}, err
+			return dto.UserDetailResponse{}, err
+		}
+	}
+
+	for _, permID := range req.PermissionIDs {
+		_, err = tx.ExecContext(ctx,
+			`INSERT INTO user_permissions (user_id, permission_id) VALUES ($1, $2)`,
+			id, permID,
+		)
+		if err != nil {
+			return dto.UserDetailResponse{}, err
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return dto.UserResponse{}, err
+		return dto.UserDetailResponse{}, err
 	}
 
 	return s.GetByID(ctx, id)
 }
 
-func (s *UserService) Update(ctx context.Context, id string, req dto.UpdateUserRequest, updatedBy string) (dto.UserResponse, error) {
+func (s *UserService) Update(ctx context.Context, id string, req dto.UpdateUserRequest, updatedBy string) (dto.UserDetailResponse, error) {
+	// Cannot modify own roles/permissions (unless superadmin)
+	if updatedBy == id && (len(req.RoleIDs) > 0 || req.PermissionIDs != nil) {
+		var isSuperadmin bool
+		s.db.QueryRowContext(ctx,
+			`SELECT EXISTS(
+				SELECT 1 FROM user_roles ur
+				JOIN roles r ON r.id = ur.role_id
+				WHERE ur.user_id = $1 AND r.is_superadmin = true
+			)`, updatedBy,
+		).Scan(&isSuperadmin)
+
+		if !isSuperadmin {
+			return dto.UserDetailResponse{}, response.NewFieldErr("user", "cannot modify your own roles or permissions")
+		}
+	}
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return dto.UserResponse{}, err
+		return dto.UserDetailResponse{}, err
 	}
 	defer tx.Rollback()
 
@@ -154,14 +175,14 @@ func (s *UserService) Update(ctx context.Context, id string, req dto.UpdateUserR
 			req.Name, updatedBy, id,
 		)
 		if err != nil {
-			return dto.UserResponse{}, err
+			return dto.UserDetailResponse{}, err
 		}
 	}
 
 	if len(req.RoleIDs) > 0 {
 		_, err = tx.ExecContext(ctx, `DELETE FROM user_roles WHERE user_id = $1`, id)
 		if err != nil {
-			return dto.UserResponse{}, err
+			return dto.UserDetailResponse{}, err
 		}
 
 		for _, roleID := range req.RoleIDs {
@@ -170,21 +191,47 @@ func (s *UserService) Update(ctx context.Context, id string, req dto.UpdateUserR
 				id, roleID,
 			)
 			if err != nil {
-				return dto.UserResponse{}, err
+				return dto.UserDetailResponse{}, err
+			}
+		}
+	}
+
+	if req.PermissionIDs != nil {
+		_, err = tx.ExecContext(ctx, `DELETE FROM user_permissions WHERE user_id = $1`, id)
+		if err != nil {
+			return dto.UserDetailResponse{}, err
+		}
+
+		for _, permID := range req.PermissionIDs {
+			_, err = tx.ExecContext(ctx,
+				`INSERT INTO user_permissions (user_id, permission_id) VALUES ($1, $2)`,
+				id, permID,
+			)
+			if err != nil {
+				return dto.UserDetailResponse{}, err
 			}
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return dto.UserResponse{}, err
+		return dto.UserDetailResponse{}, err
 	}
 
 	return s.GetByID(ctx, id)
 }
 
-func (s *UserService) Delete(ctx context.Context, id string) error {
+func (s *UserService) Delete(ctx context.Context, id string, deletedBy string) error {
+	if id == deletedBy {
+		return response.NewFieldErr("user", "cannot delete yourself")
+	}
+
 	_, err := s.db.ExecContext(ctx, `DELETE FROM users WHERE id = $1`, id)
-	return err
+	if err != nil {
+		return err
+	}
+
+	middleware.RevokeAllTokens(s.redis, id)
+	return nil
 }
 
 func (s *UserService) getUserRoles(ctx context.Context, userID string) ([]dto.UserRoleItem, error) {
@@ -200,7 +247,7 @@ func (s *UserService) getUserRoles(ctx context.Context, userID string) ([]dto.Us
 	}
 	defer rows.Close()
 
-	var roles []dto.UserRoleItem
+	roles := make([]dto.UserRoleItem, 0)
 	for rows.Next() {
 		var role dto.UserRoleItem
 		if err := rows.Scan(&role.ID, &role.Name); err != nil {
@@ -209,4 +256,28 @@ func (s *UserService) getUserRoles(ctx context.Context, userID string) ([]dto.Us
 		roles = append(roles, role)
 	}
 	return roles, nil
+}
+
+func (s *UserService) getUserPermissions(ctx context.Context, userID string) ([]dto.UserPermissionItem, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT p.id, p.name FROM permissions p
+		 JOIN user_permissions up ON up.permission_id = p.id
+		 WHERE up.user_id = $1
+		 ORDER BY p.name`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	perms := make([]dto.UserPermissionItem, 0)
+	for rows.Next() {
+		var perm dto.UserPermissionItem
+		if err := rows.Scan(&perm.ID, &perm.Name); err != nil {
+			return nil, err
+		}
+		perms = append(perms, perm)
+	}
+	return perms, nil
 }

@@ -24,7 +24,7 @@ func NewRoleHandler(service *service.RoleService) *RoleHandler {
 // @Security    BearerAuth
 // @Security    DeviceID
 // @Param       id path string true "Role ID"
-// @Success     200 {object} dto.RoleResponse
+// @Success     200 {object} dto.RoleDetailResponse
 // @Failure     404 {object} response.ErrorResponse
 // @Router      /roles/{id} [get]
 func (h *RoleHandler) GetByID(c *gin.Context) {
@@ -66,7 +66,7 @@ func (h *RoleHandler) List(c *gin.Context) {
 // @Security    BearerAuth
 // @Security    DeviceID
 // @Param       body body dto.CreateRoleRequest true "Create role"
-// @Success     200 {object} dto.RoleResponse
+// @Success     200 {object} dto.RoleDetailResponse
 // @Failure     400 {object} response.ErrorResponse
 // @Router      /roles [post]
 func (h *RoleHandler) Create(c *gin.Context) {
@@ -95,7 +95,7 @@ func (h *RoleHandler) Create(c *gin.Context) {
 // @Security    DeviceID
 // @Param       id   path string true "Role ID"
 // @Param       body body dto.UpdateRoleRequest true "Update role"
-// @Success     200 {object} dto.RoleResponse
+// @Success     200 {object} dto.RoleDetailResponse
 // @Failure     400 {object} response.ErrorResponse
 // @Router      /roles/{id} [put]
 func (h *RoleHandler) Update(c *gin.Context) {
